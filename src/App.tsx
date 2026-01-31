@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import axios from 'axios';
-import './App.css'; // Importa seu CSS estilizado
+import './App.css'; 
 
-// Tipagem para a resposta da API
+
 interface AnalysisResult {
   categoria: string;
   justificativa: string;
@@ -18,7 +18,6 @@ function App() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
   const handleAnalyze = async () => {
-    // Validação simples
     if (!inputText && !file) {
       alert("Por favor, digite um texto ou envie um arquivo.");
       return;
@@ -28,7 +27,6 @@ function App() {
     setResult(null);
 
     const formData = new FormData();
-    // Prioriza o arquivo se tiver, senão vai o texto
     if (file) {
       formData.append('file', file);
     } else {
@@ -36,13 +34,10 @@ function App() {
     }
 
     try {
-      // Conecta no seu Python (Porta 8000)
+      // Lembre-se de usar a URL do Render aqui quando for pro ar!
       const response = await axios.post('http://localhost:8000/analyze', formData);
       
-      // Tratamento para garantir que o JSON venha correto
       let data = response.data.result;
-      
-      // Se vier como string (texto), transforma em objeto
       if (typeof data === 'string') {
         try {
            const cleanJson = data.replace(/```json/g, "").replace(/```/g, "");
@@ -54,33 +49,61 @@ function App() {
       setResult(data);
     } catch (error) {
       console.error(error);
-      alert("Erro ao conectar com o servidor. Verifique se o Python (backend) está rodando.");
+      alert("Erro de conexão com o Backend.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container">
-      <div className="card">
+    <div className="app-layout">
+      
+      {/* 1. Sidebar (Menu Lateral) */}
+      <aside className="sidebar">
+        <div className="brand">
+  <img src="/assets/autou_logo.jpg" alt="AutoU Logo" className="logo" />
+  <h2>Auto<span>U</span> Triager</h2>
+</div>
         
-        <header className="header">
-          <h1>📨 AutoU Email Triager</h1>
-          <p>Classificação Inteligente & Resposta Automática</p>
+        <nav className="menu">
+          <a href="#" className="menu-item active">Nova Análise</a>
+          <a href="#" className="menu-item">Histórico</a>
+          <a href="#" className="menu-item">Configurações</a>
+        </nav>
+
+        <div className="user-profile">
+          <div className="avatar">U</div>
+          <div className="user-info">
+            <span className="name">Usuário AutoU</span>
+            <span className="role">Analista</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* 2. Conteúdo Principal */}
+      <main className="main-content">
+        <header className="top-bar">
+          <h1>Triagem Inteligente de Emails</h1>
+          <span className="date">{new Date().toLocaleDateString('pt-BR')}</span>
         </header>
 
-        <div className="content">
+        <div className="workspace-grid">
           
-          {/* Área de Inputs */}
-          <div className="input-group">
+          {/* Coluna da Esquerda: INPUTS */}
+          <div className="panel input-panel">
+            <h3>📥 Entrada de Dados</h3>
+            <p className="subtitle">Carregue um arquivo ou cole o texto para processar.</p>
             
-            <div className="file-input-wrapper">
-              <label htmlFor="file-upload" className="custom-file-upload">
-                {file ? (
-                   <span style={{color: '#0047AB', fontWeight: 'bold'}}>📎 {file.name}</span>
-                ) : (
-                   <span>📂 Clique para carregar PDF ou TXT</span>
-                )}
+            <div className="input-group">
+              <label htmlFor="file-upload" className={`drop-zone ${file ? 'has-file' : ''}`}>
+                <div className="icon-large">{file ? '📄' : '☁️'}</div>
+                <div className="drop-text">
+                  {file ? (
+                    <strong>{file.name}</strong>
+                  ) : (
+                    <>Arraste seu PDF/TXT ou <span>clique para buscar</span></>
+                  )}
+                </div>
               </label>
               <input 
                 id="file-upload" 
@@ -88,43 +111,74 @@ function App() {
                 accept=".txt,.pdf" 
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
               />
+
+              <div className="divider"><span>OU TEXTO DIRETO</span></div>
+
+              <textarea
+                className="text-area-modern"
+                placeholder="Ex: Prezado time, gostaria de solicitar o reembolso..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                disabled={!!file}
+              />
+
+              <div className="actions">
+                <button onClick={handleAnalyze} disabled={loading} className="btn-analyze">
+                  {loading ? "Processando IA..." : "Analisar Email Agora"}
+                </button>
+                {(file || inputText) && (
+                  <button onClick={() => {setFile(null); setInputText(''); setResult(null)}} className="btn-clear">
+                    Limpar
+                  </button>
+                )}
+              </div>
             </div>
-
-            <div className="divider">ou digite o conteúdo abaixo</div>
-
-            <textarea
-              className="text-area"
-              placeholder="Cole o corpo do email aqui para análise..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              disabled={!!file}
-            />
           </div>
 
-          <button onClick={handleAnalyze} disabled={loading} className="btn-primary">
-            {loading ? "Processando..." : "Classificar Email"}
-          </button>
+          {/* Coluna da Direita: RESULTADOS */}
+          <div className="panel result-panel">
+            <h3>🤖 Resultado da Análise</h3>
+            
+            {!result && !loading && (
+              <div className="empty-state">
+                <span className="empty-icon">waiting_for_data</span>
+                <p>Aguardando envio para classificação...</p>
+              </div>
+            )}
 
-          {/* Resultado da IA */}
-          {result && (
-            <div className={`result-box ${result.categoria?.toLowerCase().includes('produt') ? 'produtivo' : 'improdutivo'}`}>
-              <div className="result-header">
-                <strong>Categoria:</strong>
-                <span className="badge">{result.categoria}</span>
+            {loading && (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Consultando Inteligência Artificial...</p>
               </div>
+            )}
 
-              <div className="response-area">
-                <p className="label-response">Resposta Sugerida:</p>
-                <p className="response-text">"{result.resposta_sugerida || result.reply}"</p>
+            {result && (
+              <div className={`result-content fade-in ${result.categoria?.toLowerCase().includes('produt') ? 'theme-success' : 'theme-warning'}`}>
+                
+                <div className="status-badge">
+                  <span className="status-label">Classificação Detectada</span>
+                  <span className="status-value">{result.categoria}</span>
+                </div>
+
+                <div className="info-block">
+                  <h4>💡 Resposta Sugerida</h4>
+                  <div className="response-box">
+                    "{result.resposta_sugerida || result.reply}"
+                  </div>
+                </div>
+
+                <div className="info-block">
+                  <h4>🔍 Justificativa da IA</h4>
+                  <p className="reason-text">{result.justificativa || result.reason}</p>
+                </div>
+
               </div>
-              
-              <div className="reason-area">
-                <small>Motivo: {result.justificativa || result.reason}</small>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
+
         </div>
-      </div>
+      </main>
     </div>
   );
 }
